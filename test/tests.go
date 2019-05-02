@@ -233,4 +233,60 @@ var Tests = map[string]func(cli client.Client) error{
 
 		return fmt.Errorf("Expected %d messages to be read, but got %d", numPublishes, msgCount)
 	},
+	"Subscribe to channel `foo` at a high rate/ publish uniquely to each": func(cli client.Client) error {
+		numSubscriptions := 200
+
+		msgChan := make(chan string, numSubscriptions)
+		subErrChan := make(chan error, 1)
+		pubErrChan := make(chan error, 1)
+
+		for i := 0; i < numSubscriptions; i++ {
+			go func(idx int) {
+				sub, err := cli.Subscribe("chan" + fmt.Sprint(idx))
+				if err != nil {
+					subErrChan <- err
+					return
+				}
+				defer sub.Close()
+
+				msg, err := sub.Read()
+				if err != nil {
+					subErrChan <- err
+					return
+				}
+
+				msgChan <- msg
+			}(i)
+		}
+
+		time.Sleep(500 * time.Millisecond)
+
+		for i := 0; i < numSubscriptions; i++ {
+			go func(idx int) {
+				err := cli.Publish("chan"+fmt.Sprint(idx), fmt.Sprint(idx))
+				if err != nil {
+					pubErrChan <- err
+					return
+				}
+			}(i)
+		}
+
+		receivedMsgCount := 0
+		for {
+			select {
+			case err := <-subErrChan:
+				return err
+			case err := <-pubErrChan:
+				return err
+			case <-msgChan:
+				receivedMsgCount += 1
+
+				if receivedMsgCount == numSubscriptions {
+					return nil
+				}
+			}
+		}
+
+		return fmt.Errorf("Expected %d messages to be recieved, but got %d", numSubscriptions, receivedMsgCount)
+	},
 }
