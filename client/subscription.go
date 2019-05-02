@@ -13,7 +13,7 @@ var errorInvalidOperation = errors.New("Invalid operation type")
 // of events
 type Subscription interface {
 	// Read returns a message from the connection
-	Read() ([]byte, error)
+	Read() (string, error)
 
 	// Close closes the underlying connection
 	Close() error
@@ -39,36 +39,36 @@ func NewSubscription(conn *textproto.Conn) Subscription {
 // from the connection fails at any point or if the command is not supported
 //
 // Note that this method blocks till it can read from the connection
-func (s *subscription) Read() ([]byte, error) {
+func (s *subscription) Read() (string, error) {
 	for {
-		line, err := s.conn.ReadLine()
+		line, err := readFromConnection(s.conn)
 		if err != nil {
 			s.conn.Close()
-			return nil, err
+			return "", err
 		}
 
 		switch line {
 		case MSG:
-			data, err := s.conn.ReadLine()
+			data, err := readFromConnection(s.conn)
 			if err != nil {
 				s.conn.Close()
-				return nil, err
+				return "", err
 			}
 
-			return []byte(data), nil
+			return data, nil
 		case ACK:
 			continue
 		case ERR:
-			errDesc, err := s.conn.ReadLine()
+			errDesc, err := readFromConnection(s.conn)
 			if err != nil {
 				s.conn.Close()
-				return nil, err
+				return "", err
 			}
 
-			return nil, fmt.Errorf("Error from server: %s", errDesc)
+			return "", fmt.Errorf("Error from server: %s", errDesc)
 		default:
 			s.conn.Close()
-			return nil, errorInvalidOperation
+			return "", errorInvalidOperation
 		}
 	}
 }

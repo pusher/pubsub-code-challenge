@@ -16,7 +16,7 @@ const (
 // Client represents a publish/ subscribe client
 type Client interface {
 	// Publish a message to a channel
-	Publish(channel string, data []byte) error
+	Publish(channel string, data string) error
 
 	// Subscribe to a channel
 	Subscribe(channel string) (Subscription, error)
@@ -44,8 +44,8 @@ func New(address string) Client {
 //   - There is either a connection error
 //	 - The server fails to send an ACK
 //	   and sends an ERR instead
-func (c *client) Publish(channel string, data []byte) error {
-	return c.Raw(fmt.Sprintf("%s\r\n%s\r\n%s", PUBLISH, channel, string(data)))
+func (c *client) Publish(channel string, data string) error {
+	return c.Raw(fmt.Sprintf("%s\r\n%s\r\n%s", PUBLISH, channel, data))
 }
 
 // Subscribe returns a Susbcription object that wraps the underlying
@@ -104,22 +104,28 @@ func (c *client) Raw(cmd string) error {
 	return nil
 }
 
-func readResponse(conn *textproto.Conn) error {
-	resp, err := conn.ReadLine()
+func readFromConnection(conn *textproto.Conn) (string, error) {
+	data, err := conn.ReadLine()
 	if err != nil {
-		return fmt.Errorf(
-			"Failed to read from connection: %s",
-			err.Error(),
-		)
+		return "", fmt.Errorf("Failed to read from connection: %s", err.Error())
+	}
+
+	return data, nil
+}
+
+func readResponse(conn *textproto.Conn) error {
+	resp, err := readFromConnection(conn)
+	if err != nil {
+		return err
 	}
 
 	switch resp {
 	case ACK:
 		return nil
 	case ERR:
-		errDesc, err := conn.ReadLine()
+		errDesc, err := readFromConnection(conn)
 		if err != nil {
-			return fmt.Errorf("Failed to read from connection: %s", err.Error())
+			return err
 		}
 		return fmt.Errorf("Error from server: %s", errDesc)
 	default:

@@ -21,7 +21,7 @@ var Tests = map[string]func(cli client.Client) error{
 		defer sub.Close()
 
 		data := "Hello"
-		err = cli.Publish(channelName, []byte(data))
+		err = cli.Publish(channelName, data)
 		if err != nil {
 			return err
 		}
@@ -31,13 +31,14 @@ var Tests = map[string]func(cli client.Client) error{
 			return err
 		}
 
-		if string(msg) != data {
+		if msg != data {
 			return fmt.Errorf("Expected message to be `Hello`, but got %s", msg)
 		}
 
 		return nil
 	},
 	"Subscribe to channel `foo`/ publish to channel `bar`": func(cli client.Client) error {
+		timeout := 1 * time.Second
 		sub, err := cli.Subscribe("foo")
 		if err != nil {
 			return err
@@ -45,17 +46,18 @@ var Tests = map[string]func(cli client.Client) error{
 		defer sub.Close()
 
 		data := "Hello"
-		err = cli.Publish("bar", []byte(data))
+		err = cli.Publish("bar", data)
 		if err != nil {
 			return err
 		}
 
-		msgChan := make(chan []byte, 1)
+		msgChan := make(chan string, 1)
 		errChan := make(chan error, 1)
 		go func() {
 			msg, err := sub.Read()
 			if err != nil {
-				errChan <- fmt.Errorf("Error when reading from subscription: %s", err.Error())
+				errChan <- err
+				return
 			}
 
 			msgChan <- msg
@@ -66,7 +68,7 @@ var Tests = map[string]func(cli client.Client) error{
 			return errors.New("Expected to not recieve a message on channel `foo`, but got one")
 		case err := <-errChan:
 			return err
-		case <-time.After(2 * time.Second):
+		case <-time.After(timeout):
 			return nil
 		}
 
@@ -76,20 +78,22 @@ var Tests = map[string]func(cli client.Client) error{
 		numSubscriptions := 3
 		channelName := "foo"
 
-		msgChan := make(chan []byte, numSubscriptions)
+		msgChan := make(chan string, numSubscriptions)
 		errChan := make(chan error, 1)
 
 		for i := 0; i < numSubscriptions; i++ {
 			go func() {
 				sub, err := cli.Subscribe(channelName)
 				if err != nil {
-					errChan <- fmt.Errorf("Error when subscribing to channel `foo`: %s", err.Error())
+					errChan <- err
+					return
 				}
 				defer sub.Close()
 
 				msg, err := sub.Read()
 				if err != nil {
-					errChan <- fmt.Errorf("Error when reading from subscription: %s", err.Error())
+					errChan <- err
+					return
 				}
 
 				msgChan <- msg
@@ -97,10 +101,10 @@ var Tests = map[string]func(cli client.Client) error{
 		}
 
 		// grace to allow subscriptions to settle
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 
 		data := "Hello"
-		err := cli.Publish(channelName, []byte(data))
+		err := cli.Publish(channelName, data)
 		if err != nil {
 			return err
 		}
@@ -109,7 +113,7 @@ var Tests = map[string]func(cli client.Client) error{
 		for {
 			select {
 			case msg := <-msgChan:
-				if string(msg) == data {
+				if msg == data {
 					msgCount += 1
 				}
 
@@ -135,7 +139,7 @@ var Tests = map[string]func(cli client.Client) error{
 
 		data := "Hello"
 		for i := 0; i < numPublishes; i++ {
-			err := cli.Publish(channelName, []byte(data))
+			err := cli.Publish(channelName, data)
 			if err != nil {
 				return err
 			}
@@ -148,7 +152,7 @@ var Tests = map[string]func(cli client.Client) error{
 				return err
 			}
 
-			if string(msg) == data {
+			if msg == data {
 				successfulReads += 1
 			}
 
@@ -184,13 +188,14 @@ var Tests = map[string]func(cli client.Client) error{
 		}
 		defer sub.Close()
 
-		msgChan := make(chan []byte, numPublishes)
+		msgChan := make(chan string, numPublishes)
 		errChan := make(chan error, 1)
 		go func() {
 			for {
 				msg, err := sub.Read()
 				if err != nil {
-					errChan <- fmt.Errorf("Error when reading from subscription: %s", err.Error())
+					errChan <- err
+					return
 				}
 
 				msgChan <- msg
@@ -199,7 +204,7 @@ var Tests = map[string]func(cli client.Client) error{
 
 		data := "Hello"
 		for i := 0; i < numPublishes; i++ {
-			err := cli.Publish(channelName, []byte(data))
+			err := cli.Publish(channelName, data)
 			if err != nil {
 				return err
 			}
@@ -211,7 +216,7 @@ var Tests = map[string]func(cli client.Client) error{
 			case err := <-errChan:
 				return err
 			case msg := <-msgChan:
-				if string(msg) == data {
+				if msg == data {
 					msgCount += 1
 				}
 
