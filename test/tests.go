@@ -176,6 +176,11 @@ var Tests = map[string]func(cli client.Client) error{
 			return errors.New("Expected error to not be nil, but it was")
 		}
 
+		expectedError := "Error from server: unknown operation: FOO"
+		if err.Error() != expectedError {
+			return fmt.Errorf("Expected error to be `%s`, but got `%s`", expectedError, err.Error())
+		}
+
 		return nil
 	},
 	"Subscribe to channel `foo`/ high rate of publishes to channel `foo`": func(cli client.Client) error {
