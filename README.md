@@ -31,7 +31,7 @@ following restrictions:
 - If using Java, your code *must* run on OpenJDK
 - If using C#, your code *must* run on Mono
 
-To help up run your submission, please include:
+To help us run your submission, please include:
 
 - a bash script named `run` which will both compile and run your server,
   including fetching any required dependencies.
@@ -176,7 +176,7 @@ Alternatively, if you already have the Go toolchain installed,
 go get github.com/pusher/pubsub-code-challenge/pusher-interview-test
 ```
 
-The source code of the test suite is available this repo - [here, if you are
+The source code of the test suite is available in this repo - [here, if you are
 not reading the repo readme right
 now](https://github.com/pusher/pubsub-code-challenge), and you are free to
 examine it, and build the binary yourself if you wish. You will need a Go
