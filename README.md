@@ -29,7 +29,8 @@ In order that we can run your solution to test it, please work within the
 following restrictions:
 
 - If using Java, your code *must* run on OpenJDK
-- If using C#, your code *must* run on Mono
+- If using C#, your code *must* run on Mono or .net Core (i.e. we must be able
+  to run it on Ubuntu / MacOS)
 
 To help us run your submission, please include:
 
