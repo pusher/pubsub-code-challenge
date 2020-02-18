@@ -3,6 +3,7 @@ package test
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pusher/pubsub-code-challenge/client"
@@ -239,9 +240,13 @@ var Tests = map[string]func(cli client.Client) error{
 		subErrChan := make(chan error, 1)
 		pubErrChan := make(chan error, 1)
 
+		wg := sync.WaitGroup{}
+		wg.Add(numSubscriptions)
+
 		for i := 0; i < numSubscriptions; i++ {
 			go func(idx int) {
 				sub, err := cli.Subscribe("chan" + fmt.Sprint(idx))
+				wg.Done()
 				if err != nil {
 					subErrChan <- err
 					return
@@ -258,7 +263,7 @@ var Tests = map[string]func(cli client.Client) error{
 			}(i)
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		wg.Wait()
 
 		for i := 0; i < numSubscriptions; i++ {
 			go func(idx int) {
